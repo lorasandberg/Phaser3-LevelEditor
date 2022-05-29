@@ -24,9 +24,6 @@ export default class LevelEditor {
     }
 
     preload(scene : Phaser.Scene) {
-
-        scene.load.image("tileset", "assets/tileset.png");
-        scene.load.image("tile_cursor", "assets/cursor.png");
     }
 
     create(scene : Phaser.Scene) {
@@ -146,5 +143,10 @@ export default class LevelEditor {
         this.levelMap.putTileAt(this.selectedTile, 
             Phaser.Math.FloorTo((x - this.levelLayer.x) / (tileSize * this.levelLayer.scaleX)), 
             Phaser.Math.FloorTo((y - this.levelLayer.y) / (tileSize * this.levelLayer.scaleY)));
+    }
+
+    // Get map data
+    getMap() : Phaser.Tilemaps.LayerData {
+        return this.levelMap.layer;
     }
 }
