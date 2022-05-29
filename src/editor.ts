@@ -18,9 +18,12 @@ export default class LevelEditor {
 
     // Which tile is currently selected on the picker.
     selectedTile : number;
+    cursorPosition : [number, number];
+    pickerActive : boolean;
 
     constructor() {
-
+        this.cursorPosition = [0,0];
+        this.pickerActive = true;
     }
 
     preload(scene : Phaser.Scene) {
@@ -62,8 +65,6 @@ export default class LevelEditor {
         .setOrigin(0,0)
         .setVisible(false);
 
-        scene.input.on("pointermove", this.refreshLevelCursor, this);
-
         // Populating the map with default tiles at start.
         for(let x = 0; x < levelSize[0]; x++) {
             for(let y = 0; y < levelSize[1]; y++) {
@@ -75,8 +76,12 @@ export default class LevelEditor {
 
         this.levelLayer.setInteractive();
 
-        this.levelLayer.on('pointerdown', this.putTile, this);
-        scene.input.keyboard.on("keydown-SPACE", function() { this.putTile(scene.input.activePointer); }, this);
+        scene.input.keyboard.on("keydown-SPACE", function() { 
+            if(!this.pickerActive)
+                this.putTileAt(this.cursorPosition[0], this.cursorPosition[1]-1); 
+            if(this.pickerActive)
+                this.setCursorPosition(0,1);
+        }, this);
 
         // Setting up the tile picker
         this.pickerMap = scene.add.tilemap();
@@ -103,15 +108,18 @@ export default class LevelEditor {
 
         // Picker tile selection logic. Player can go through the tiles with left and right arrow keys.
         scene.input.keyboard.on("keydown-LEFT", function() { 
-            this.selectedTile--; 
-            this.selectedTile = (this.selectedTile + tileCount) % tileCount;
-            this.refreshPicker();
+            this.setCursorPosition(-1, 0);
         }, this);
 
         scene.input.keyboard.on("keydown-RIGHT", function() { 
-            this.selectedTile++; 
-            this.selectedTile = (this.selectedTile + tileCount) % tileCount;
-            this.refreshPicker();
+            this.setCursorPosition(1, 0);
+        }, this);
+
+        scene.input.keyboard.on("keydown-UP", function() {
+            this.setCursorPosition(0, -1);
+        }, this);
+        scene.input.keyboard.on("keydown-DOWN", function() {
+            this.setCursorPosition(0, 1);
         }, this);
 
         this.refreshPicker();
@@ -123,18 +131,59 @@ export default class LevelEditor {
         this.pickerCursor.y = this.pickerLayer.y;
     }
 
-    // Refreshes the level cursor position. Happens every time the application detects mouse movement.
-    refreshLevelCursor(pointer : Phaser.Input.Pointer) : void {
-        let x = Phaser.Math.FloorTo((pointer.x - this.levelLayer.x) / (tileSize * this.levelLayer.scaleX));
-        let y = Phaser.Math.FloorTo((pointer.y - this.levelLayer.y) / (tileSize * this.levelLayer.scaleY));
+    setCursorPosition(deltaX : number, deltaY : number) : void {
 
+        let newPosition = [
+        Phaser.Math.Clamp(this.cursorPosition[0] + deltaX, 0, levelSize[0] - 1), 
+        Phaser.Math.Clamp(this.cursorPosition[1] + deltaY, 0, levelSize[1])];
+
+        let difference = [newPosition[0] - this.cursorPosition[0], newPosition[1] - this.cursorPosition[1]];
+
+        this.cursorPosition = [newPosition[0], newPosition[1]];
+
+        // Cursor was moved vertically
+        if(difference[1] != 0) {
+
+            // Cursor moved from the picker to the level
+            if(this.pickerActive && this.cursorPosition[1] > 0) {
+                if(this.selectedTile == 0)
+                    this.cursorPosition[0] = 1;
+                else 
+                    this.cursorPosition[0] = 2;
+            }
+
+            // Cursor moved from the leve to the picker
+            if(!this.pickerActive && this.cursorPosition[1] == 0) {
+                if(this.cursorPosition[0] <= 1)
+                    this.selectedTile = 0;
+                else
+                    this.selectedTile = 1;
+            }
+
+            this.pickerActive = this.cursorPosition[1] == 0;
+            //this.pickerCursor.setVisible(this.pickerActive);
+            this.levelCursor.setVisible(!this.pickerActive);
+        }
+
+        // Cursor was moved horizontally
+        if(this.pickerActive)
+            this.selectedTile = (this.selectedTile + deltaX + tileCount) % tileCount;
+        if(difference[0] != 0) {
+
+        }
+        this.refreshPicker();
+        this.refreshLevelGrid();
+    }
+
+    // Refreshes the level cursor position. Happens every time the application detects mouse movement.
+    refreshLevelGrid() : void {
         //x = Phaser.Math.Clamp(x, 0, levelSize[0]-1);
         //y = Phaser.Math.Clamp(y, 0, levelSize[1]-1);
 
-        this.levelCursor.setVisible(x >= 0 && x < levelSize[0] && y >= 0 && y < levelSize[1]);
+        this.levelCursor.setVisible(this.cursorPosition[0] >= 0 && this.cursorPosition[0] < levelSize[0] && this.cursorPosition[1] > 0 && this.cursorPosition[1] < levelSize[1] + 1);
 
-        this.levelCursor.x = this.levelLayer.x + tileSize * x * this.levelLayer.scaleX;
-        this.levelCursor.y = this.levelLayer.y + tileSize * y * this.levelLayer.scaleY;
+        this.levelCursor.x = this.levelLayer.x + tileSize * this.cursorPosition[0] * this.levelLayer.scaleX;
+        this.levelCursor.y = this.levelLayer.y + tileSize * (this.cursorPosition[1] - 1) * this.levelLayer.scaleY;
     }
 
     // Inserts selected tile into the level map.
@@ -143,8 +192,19 @@ export default class LevelEditor {
         let x = pointer.x;
         let y = pointer.y;
 
-        this.levelMap.putTileAt(this.selectedTile, 
-            Phaser.Math.FloorTo((x - this.levelLayer.x) / (tileSize * this.levelLayer.scaleX)), 
-            Phaser.Math.FloorTo((y - this.levelLayer.y) / (tileSize * this.levelLayer.scaleY)));
+        this.putTileAt(
+            Phaser.Math.FloorTo((x - this.levelLayer.x) / (tileSize * this.levelLayer.scaleX)),
+            Phaser.Math.FloorTo((y - this.levelLayer.y) / (tileSize * this.levelLayer.scaleY))
+            );
+    }
+
+    putTileAt(x : number, y : number) :void {
+
+        if(x < 0 || y < 0)
+            return;
+        if(x >= levelSize[0] || y >= levelSize[1])
+            return;
+
+        this.levelMap.putTileAt(this.selectedTile, x, y);
     }
 }
