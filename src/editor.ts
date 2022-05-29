@@ -31,6 +31,11 @@ export default class LevelEditor {
 
     create(scene : Phaser.Scene) {
         
+
+        // Set editor background
+        scene.add.rectangle(200, 300, 360, 560, 0xFFFFFF);
+
+
         // Visual scale of the display elements for both grids.
         const levelScale : number = 4; 
         const pickerScale : number = 3;
@@ -49,11 +54,13 @@ export default class LevelEditor {
 
 
         this.levelLayer.x = 200 - this.levelMap.widthInPixels / 2 * this.levelLayer.scaleX;
-        this.levelLayer.y = 300 - this.levelMap.heightInPixels / 2 * this.levelLayer.scaleY;
+        this.levelLayer.y = 300 - this.levelMap.heightInPixels / 2 * this.levelLayer.scaleY + 50;
 
         this.levelCursor = scene.add.image(0, 0, "tile_cursor");
-        this.levelCursor.setScale(levelScale, levelScale);
-        this.levelCursor.setOrigin(0,0);
+        this.levelCursor
+        .setScale(levelScale, levelScale)
+        .setOrigin(0,0)
+        .setVisible(false);
 
         scene.input.on("pointermove", this.refreshLevelCursor, this);
 
@@ -82,7 +89,7 @@ export default class LevelEditor {
         this.pickerLayer = this.pickerMap.createBlankLayer("layer", "tileset", 0, 0);
 
         this.pickerLayer.x = 200 - this.pickerMap.widthInPixels / 2 * pickerScale;
-        this.pickerLayer.y = 32;
+        this.pickerLayer.y = 90;
 
         // Filling the picker with all of our different tiles.
         for(let i = 0; i < tileCount; i++)
@@ -121,8 +128,10 @@ export default class LevelEditor {
         let x = Phaser.Math.FloorTo((pointer.x - this.levelLayer.x) / (tileSize * this.levelLayer.scaleX));
         let y = Phaser.Math.FloorTo((pointer.y - this.levelLayer.y) / (tileSize * this.levelLayer.scaleY));
 
-        x = Phaser.Math.Clamp(x, 0, levelSize[0]-1);
-        y = Phaser.Math.Clamp(y, 0, levelSize[1]-1);
+        //x = Phaser.Math.Clamp(x, 0, levelSize[0]-1);
+        //y = Phaser.Math.Clamp(y, 0, levelSize[1]-1);
+
+        this.levelCursor.setVisible(x >= 0 && x < levelSize[0] && y >= 0 && y < levelSize[1]);
 
         this.levelCursor.x = this.levelLayer.x + tileSize * x * this.levelLayer.scaleX;
         this.levelCursor.y = this.levelLayer.y + tileSize * y * this.levelLayer.scaleY;

@@ -26,10 +26,11 @@ export default class Game extends Phaser.Scene
 
 const config = {
     type: Phaser.AUTO,
-    backgroundColor: '#125555',
+    backgroundColor: '#f0316a',
     width: 400,
     height: 600,
-    scene: Game
+    scene: Game,
+    parent: "phaser"
 };
 
 const game = new Phaser.Game(config);
