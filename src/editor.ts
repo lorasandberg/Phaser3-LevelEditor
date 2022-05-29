@@ -18,7 +18,13 @@ export default class LevelEditor {
 
     // Which tile is currently selected on the picker.
     selectedTile : number;
+
+    // An abstract cursor instead of a visual element
+    // Reacts to player input and defines which tiles or actions are currently selected.
+    // In the case of y = 0, the tile selector becomes active. 
+    // When y is [1,5], the level grid is active. 
     cursorPosition : [number, number];
+
     pickerActive : boolean;
 
     constructor() {
@@ -34,7 +40,6 @@ export default class LevelEditor {
 
     create(scene : Phaser.Scene) {
         
-
         // Set editor background
         scene.add.rectangle(200, 300, 360, 560, 0xFFFFFF);
 
@@ -74,15 +79,6 @@ export default class LevelEditor {
 
         this.selectedTile = 0;
 
-        this.levelLayer.setInteractive();
-
-        scene.input.keyboard.on("keydown-SPACE", function() { 
-            if(!this.pickerActive)
-                this.putTileAt(this.cursorPosition[0], this.cursorPosition[1]-1); 
-            if(this.pickerActive)
-                this.setCursorPosition(0,1);
-        }, this);
-
         // Setting up the tile picker
         this.pickerMap = scene.add.tilemap();
         this.pickerMap.width = tileCount;
@@ -106,21 +102,19 @@ export default class LevelEditor {
         this.pickerLayer.setScale(pickerScale, pickerScale);
         this.pickerCursor.setScale(pickerScale, pickerScale);
 
-        // Picker tile selection logic. Player can go through the tiles with left and right arrow keys.
-        scene.input.keyboard.on("keydown-LEFT", function() { 
-            this.setCursorPosition(-1, 0);
+        // Check spacebar input for either tile selection or tile insertion.
+        scene.input.keyboard.on("keydown-SPACE", function() { 
+            if(!this.pickerActive)
+                this.putTileAt(this.cursorPosition[0], this.cursorPosition[1]-1); 
+            if(this.pickerActive)
+                this.setCursorPosition(0,1);
         }, this);
 
-        scene.input.keyboard.on("keydown-RIGHT", function() { 
-            this.setCursorPosition(1, 0);
-        }, this);
-
-        scene.input.keyboard.on("keydown-UP", function() {
-            this.setCursorPosition(0, -1);
-        }, this);
-        scene.input.keyboard.on("keydown-DOWN", function() {
-            this.setCursorPosition(0, 1);
-        }, this);
+        // Move player cursor depending on arrow key input
+        scene.input.keyboard.on("keydown-LEFT", function() { this.setCursorPosition(-1, 0);  }, this);
+        scene.input.keyboard.on("keydown-RIGHT", function() { this.setCursorPosition(1, 0); }, this);
+        scene.input.keyboard.on("keydown-UP", function() { this.setCursorPosition(0, -1); }, this);
+        scene.input.keyboard.on("keydown-DOWN", function() { this.setCursorPosition(0, 1); }, this);
 
         this.refreshPicker();
     }
@@ -131,6 +125,8 @@ export default class LevelEditor {
         this.pickerCursor.y = this.pickerLayer.y;
     }
 
+    // Executes UI logic depending on player input.
+    // Moves either the level grid cursor or picker cursor depending which one is active.
     setCursorPosition(deltaX : number, deltaY : number) : void {
 
         let newPosition = [
@@ -165,40 +161,26 @@ export default class LevelEditor {
             this.levelCursor.setVisible(!this.pickerActive);
         }
 
-        // Cursor was moved horizontally
+        // Change tile picker cursor location based on horizontal input.
         if(this.pickerActive)
             this.selectedTile = (this.selectedTile + deltaX + tileCount) % tileCount;
-        if(difference[0] != 0) {
 
-        }
         this.refreshPicker();
         this.refreshLevelGrid();
     }
 
-    // Refreshes the level cursor position. Happens every time the application detects mouse movement.
+    // Refreshes the level cursor position. Happens every time the application detects cursor movement.
     refreshLevelGrid() : void {
-        //x = Phaser.Math.Clamp(x, 0, levelSize[0]-1);
-        //y = Phaser.Math.Clamp(y, 0, levelSize[1]-1);
 
         this.levelCursor.setVisible(this.cursorPosition[0] >= 0 && this.cursorPosition[0] < levelSize[0] && this.cursorPosition[1] > 0 && this.cursorPosition[1] < levelSize[1] + 1);
 
+        // Convert level grid position to viewport position
         this.levelCursor.x = this.levelLayer.x + tileSize * this.cursorPosition[0] * this.levelLayer.scaleX;
         this.levelCursor.y = this.levelLayer.y + tileSize * (this.cursorPosition[1] - 1) * this.levelLayer.scaleY;
     }
 
     // Inserts selected tile into the level map.
-    putTile(pointer : Phaser.Input.Pointer) : void { 
-
-        let x = pointer.x;
-        let y = pointer.y;
-
-        this.putTileAt(
-            Phaser.Math.FloorTo((x - this.levelLayer.x) / (tileSize * this.levelLayer.scaleX)),
-            Phaser.Math.FloorTo((y - this.levelLayer.y) / (tileSize * this.levelLayer.scaleY))
-            );
-    }
-
-    putTileAt(x : number, y : number) :void {
+    putTileAt(x : number, y : number) : void {
 
         if(x < 0 || y < 0)
             return;
